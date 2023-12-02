@@ -1,51 +1,66 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import calendar
+from collections import defaultdict 
 
 # ANSI escape codes for text color
 CYAN = "\033[96m"
 RESET = "\033[0m"
 
-# Get the list of weekday names starting from Monday
+# Get the list of weekday names starting from Monday to keep correct days order
 weekdays_starting_from_monday = list(calendar.day_name)
 weekend_days = weekdays_starting_from_monday[5:]
+sunday_and_monday = [7, 0]
 
 friends = [
-	{"name": "Nadia Shostak", "birthday": datetime(1955, 5, 13)},
-	{"name": "Maria Horeva", "birthday": datetime(1955, 8, 22)},
-	{"name": "Myhailo Lohachov", "birthday": datetime(1955, 12, 1)},
-	{"name": "Olha Myronenko", "birthday": datetime(1955, 12, 1)},
-	{"name": "Artem Stepanenko", "birthday": datetime(1955, 11, 30)},
-	{"name": "Nataliia Shevchenko", "birthday": datetime(1955, 9, 26)},
+	{"name": "Nadia Shostak", "birthday": datetime(1995, 5, 13)},
+	{"name": "Maria Horeva", "birthday": datetime(1994, 12, 3)},
+	{"name": "Myhailo Lohachov", "birthday": datetime(1993, 12, 4)},
+	{"name": "Olha Myronenko", "birthday": datetime(1993, 12, 5)},
+	{"name": "Artem Stepanenko", "birthday": datetime(1990, 12, 2)},
+	{"name": "Nataliia Shevchenko", "birthday": datetime(1993, 9, 26)},
 ]
 
 def get_birthdays_per_week(users):
     today = datetime.today().date()
-    birthdays_per_week = dict()
+    today_day = today.weekday()
+    birthdays_per_week = defaultdict(list)
+
+    # if today is Sunday || Monday - replace today with prev Saturday
+    # for Sunday || Monday next weekend BDs should be moved to the next Monday
+    # and prev weekend BDs - to the current Monday
+    is_today_sunday_or_monday = today_day in sunday_and_monday
+    if is_today_sunday_or_monday:
+        days_until_previous_saturday = (today_day - 5) % 7
+        today = today - timedelta(days=days_until_previous_saturday)
 
     for user in users:
         user_name = user["name"]
         birthday = user["birthday"].date()
         birthday_this_year = birthday.replace(year=today.year)
 
+        # if day is before today - move to the next year
         if birthday_this_year < today:
             birthday_this_year = birthday_this_year.replace(year=today.year + 1)
 
+        # include only birthdays within the next 7 days
         delta_days = (birthday_this_year - today).days
-        if delta_days > 7:
+        if delta_days >= 7:
             continue
 
         day_name = birthday_this_year.strftime("%A")
-        # ? need to check this condition
+
+        # if BD on the weekend - move to the next Monday
         if day_name in weekend_days:
-            day_name = 'Monday'
-        if not day_name in birthdays_per_week:
-            birthdays_per_week[day_name] = []
+            day_name = weekdays_starting_from_monday[0]
+
         birthdays_per_week[day_name].append(user_name)
 
+    # ? iterate through weekdays_starting_from_monday to keep days order
     for week_day in weekdays_starting_from_monday:
         if not week_day in birthdays_per_week:
             continue
         names = ', '.join(birthdays_per_week[week_day])
         print('{:<18}: {:<}'.format(CYAN + week_day + RESET, names))
 
-get_birthdays_per_week(friends)
+if __name__ == "__main__":
+    get_birthdays_per_week(friends)
